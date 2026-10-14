@@ -8,9 +8,13 @@ integration_snapshot="$integration_repo/apih-tests/demo.sql"
 cd -- "$integration_repo"
 
 integration_compose() {
+    local integration_extra_files=()
+    if [[ ${integration_coverage:-0} == 1 ]]; then
+        integration_extra_files=(-f "$integration_repo/apih-tests/compose.coverage.yaml")
+    fi
     docker compose --project-name magento2-integration \
         --env-file "$integration_runtime/environment" \
-        -f "$integration_repo/apih-tests/compose.yaml" "$@"
+        -f "$integration_repo/apih-tests/compose.yaml" "${integration_extra_files[@]}" "$@"
 }
 
 integration_lock() {

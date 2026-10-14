@@ -91,6 +91,30 @@ The email-availability endpoint returns `true` even for registered emails when `
 
 The latest verified run passed all 53 steps with exit `0`, covering all 32 scoped operations. The payment endpoint's order ID is converted at capture time using `order_id: tonumber`. This stores a JSON number, so unquoted `$order_id` preserves its numeric type in expected-response bodies and also works in paths and filters. The incoming response's primitive integer-type assertion is omitted; subsequent requests validate the normalized order ID, customer, totals, and cancellation. See [coverage and verified results](apih-tests/coverage.md) for the operation inventory and run report.
 
+### PHP source coverage during REST tests
+
+Run the full suite with server-side Xdebug instrumentation:
+
+```bash
+./apih-tests/run-coverage.sh
+```
+
+The runner restores the isolated baseline, builds a separate coverage PHP image, records only the APIHydra measurement window, and restores the ordinary integration PHP service on exit. Setup, indexing, and readiness checks are excluded. The interactive demo is unaffected. The first run downloads/builds Xdebug and the standalone reporting library; Magento's Composer dependencies are unchanged.
+
+Reports are saved under `var/apih-integration/var/coverage/<run>/`. Read `latest/summary.md` under that directory for module/package totals. `summary.json` contains file totals, `clover.xml` supports CI consumers, and `history.jsonl` records each completed measurement with its APIHydra exit status and change from the previous run. By default the runner produces these compact reports and 53 request-data files for the current suite. It does not create per-source HTML pages or analysis-cache files.
+
+Set `APIH_COVERAGE_HTML=1` for a full browsable source report at `latest/html/index.html`. This generates tens of thousands of pages and uses an 8 GiB memory ceiling for the reporting process. Set `APIH_COVERAGE_CACHE=1` to speed up later source analysis by retaining a cache file per source file. Both options are off by default.
+
+The denominator includes executable PHP lines in `app/code`, `lib/internal`, and `vendor`, including untouched files. Test, fixture, example, and documentation directories are excluded; coverage-ignore annotations are disabled. Framework, persistence, plugins, and dependencies are included along with business models. Generated proxies/interceptors, templates, and PHP entry-point scripts outside these trees are excluded. This is a **conservative production-source scope**, including code used by storefront, admin, and other entry points. It is **not the exact set of code potentially reachable from REST**: dynamic dependency injection, plugins, observers, and reflection prevent reliably inferring that set from endpoint definitions alone. The report also gives coverage within files actually executed, a narrower metric which excludes untouched files. Neither percentage is presented as exact potential REST reachability coverage. Branch coverage is not collected. Xdebug's collection/filtering behavior is described in its [official documentation](https://xdebug.org/docs/code_coverage).
+
+An optional minimum applies to the broad production-source percentage:
+
+```bash
+APIH_COVERAGE_MIN=5 ./apih-tests/run-coverage.sh
+```
+
+The runner exits `2` if reporting fails or coverage is below the minimum; APIHydra failures retain their original exit code. With no minimum it records a baseline without enforcing a threshold. Raw coverage contains filenames and line execution markers, without request URLs, headers, bodies, or credentials. Report artifacts stay in ignored integration runtime storage.
+
 ### Resetting or stopping the integration instance
 
 To restore the baseline without running tests:

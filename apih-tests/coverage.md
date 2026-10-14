@@ -81,6 +81,22 @@ Route templates below come from the enabled integration schema and are relative 
 | PUT | `/V1/products/{sku}` | [CAT-04](catalog/products.yaml) [3] | PASS |
 | GET | `/V1/store/storeConfigs` | [STORE-01](store/store.yaml) [0], [STORE-02](store/store.yaml) [1] | PASS |
 
+## Instrumented PHP coverage from REST tests
+
+Measured on 2026-10-14 with `./apih-tests/run-coverage.sh`: all **53 requests passed** and produced coverage data. Xdebug recorded **47,508 covered executable lines** across **3,005 executed files**.
+
+The conservative production-source denominator is **1,082,626 executable lines in 25,908 files**, giving **4.39%** line coverage. Coverage within files actually executed is **39.25%**; that narrower percentage excludes untouched files.
+
+| Source area | Covered / executable lines | Coverage |
+| --- | ---: | ---: |
+| Application modules (`app/code`) | 25,623 / 288,452 | 8.88% |
+| Framework/internal libraries (`lib/internal`) | 12,344 / 60,222 | 20.50% |
+| Installed dependencies (`vendor`) | 9,541 / 733,952 | 1.30% |
+
+These are source coverage measurements from the REST suite, **not exact coverage of all code potentially reachable through REST**. The broad denominator includes production code used by other entry points. Dynamic dependency injection, plugins, and observers make that potential reachability boundary difficult to determine reliably. Untouched files remain included; test/fixture/example/doc directories, templates, generated code, and entry scripts outside the three source trees are excluded. Branch coverage is not measured.
+
+Read [module/package totals](../var/apih-integration/var/coverage/latest/summary.md). JSON, Clover XML, and run history remain in ignored integration runtime storage. HTML pages and per-source analysis-cache files are opt-in via `APIH_COVERAGE_HTML=1` and `APIH_COVERAGE_CACHE=1`. The runner compares completed measurements and can enforce a minimum via `APIH_COVERAGE_MIN`; see [runner details](../API.md#php-source-coverage-during-rest-tests).
+
 ## Behavioral coverage
 
 Verified cases include invalid admin login; missing authentication; denial of customer access to another customer; isolation of `/customers/me`; invalid email/product payloads; missing and deleted resources; exact search filtering and pagination including an empty second product page; product updates and deletion; customer updates and deletion; token revocation followed by rejection; empty carts, item quantity changes, deletion and re-addition; available flat-rate shipping; EUR 25 subtotal, EUR 10 shipping, and EUR 35 grand total; and pending-to-canceled orders with two canceled units.
