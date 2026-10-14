@@ -1,0 +1,233 @@
+app: apihydra
+kind: steps
+metadata:
+  name: customers
+spec:
+  steps:
+    # CUSTOMER-01 email available
+    - request:
+        method: POST
+        path: /customers/isEmailAvailable
+        body: '{"customerEmail":"apih-${run_suffix}@example.com"}'
+      response:
+        expected_status: 200
+        expected_body: 'true'
+        expected_types:
+          .:
+          - boolean
+    # CUSTOMER-02 create customer
+    - request:
+        method: POST
+        path: /customers
+        body: '{"customer":{"email":"apih-${run_suffix}@example.com","firstname":"APIHydra","lastname":"Fixture","website_id":1},"password":"ApiHydraTest123!"}'
+      response:
+        expected_status: 200
+        expected_body: '{"email":"apih-${run_suffix}@example.com","firstname":"APIHydra","website_id":1}'
+        expected_types:
+          .id:
+          - int
+        capture:
+          customer_id: .id
+          customer_email: .email
+    # CUSTOMER-03 create customer
+    - request:
+        method: POST
+        path: /customers
+        body: '{"customer":{"email":"apih-other-${run_suffix}@example.com","firstname":"APIHydra","lastname":"Fixture","website_id":1},"password":"ApiHydraTest123!"}'
+      response:
+        expected_status: 200
+        expected_body: '{"email":"apih-other-${run_suffix}@example.com","firstname":"APIHydra","website_id":1}'
+        expected_types:
+          .id:
+          - int
+        capture:
+          other_customer_id: .id
+          other_customer_email: .email
+    # CUSTOMER-04 existing email privacy
+    - request:
+        method: POST
+        path: /customers/isEmailAvailable
+        body: '{"customerEmail":$customer_email}'
+      response:
+        expected_status: 200
+        expected_body: 'true'
+        expected_types:
+          .:
+          - boolean
+    # CUSTOMER-05 invalid email
+    - request:
+        method: POST
+        path: /customers
+        body: '{"customer":{"email":"invalid","firstname":"APIHydra","lastname":"Invalid"},"password":"ApiHydraTest123!"}'
+      response:
+        expected_status: 400
+        expected_body: '{"message":"\"Email\" is not a valid email address."}'
+        expected_types:
+          .message:
+          - string
+    # CUSTOMER-06 filtered pagination
+    - request:
+        method: GET
+        path: /customers/search
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+        query: searchCriteria[filter_groups][0][filters][0][field]=email&searchCriteria[filter_groups][0][filters][0][value]=${customer_email}&searchCriteria[pageSize]=1&searchCriteria[currentPage]=1
+      response:
+        expected_status: 200
+        expected_body: '{"total_count":1,"items":[{"id":$customer_id,"email":$customer_email}],"search_criteria":{"page_size":1,"current_page":1}}'
+        expected_types:
+          .items:
+          - array
+    # CUSTOMER-07 admin reads customer
+    - request:
+        method: GET
+        path: /customers/${customer_id}
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+      response:
+        expected_status: 200
+        expected_body: '{"id":$customer_id,"email":$customer_email}'
+        expected_types:
+          .firstname:
+          - string
+    # AUTH-03 customer login
+    - request:
+        method: POST
+        path: /integration/customer/token
+        body: '{"username":$customer_email,"password":"ApiHydraTest123!"}'
+      response:
+        expected_status: 200
+        expected_types:
+          .:
+          - string
+          if length > 20 then true else null end:
+          - boolean
+        capture:
+          customer_token: .
+    # AUTH-04 second customer login
+    - request:
+        method: POST
+        path: /integration/customer/token
+        body: '{"username":$other_customer_email,"password":"ApiHydraTest123!"}'
+      response:
+        expected_status: 200
+        expected_types:
+          .:
+          - string
+        capture:
+          other_token: .
+    # CUSTOMER-08 current customer
+    - request:
+        method: GET
+        path: /customers/me
+        defaults:
+          headers:
+            Authorization: Bearer ${customer_token}
+      response:
+        expected_status: 200
+        expected_body: '{"id":$customer_id,"email":$customer_email,"firstname":"APIHydra"}'
+        expected_types:
+          .id:
+          - int
+    # CUSTOMER-09 update current customer
+    - request:
+        method: PUT
+        path: /customers/me
+        defaults:
+          headers:
+            Authorization: Bearer ${customer_token}
+        body: '{"customer":{"id":$customer_id,"email":$customer_email,"firstname":"APIHydraUpdated","lastname":"Fixture","website_id":1}}'
+      response:
+        expected_status: 200
+        expected_body: '{"id":$customer_id,"email":$customer_email,"firstname":"APIHydraUpdated"}'
+        expected_types:
+          .firstname:
+          - string
+    # CUSTOMER-10 verify update
+    - request:
+        method: GET
+        path: /customers/me
+        defaults:
+          headers:
+            Authorization: Bearer ${customer_token}
+      response:
+        expected_status: 200
+        expected_body: '{"id":$customer_id,"firstname":"APIHydraUpdated"}'
+        expected_types:
+          .id:
+          - int
+    # CUSTOMER-11 forbidden other customer
+    - request:
+        method: GET
+        path: /customers/${other_customer_id}
+        defaults:
+          headers:
+            Authorization: Bearer ${customer_token}
+      response:
+        expected_status: 401
+        expected_body: '{"parameters":{"resources":"Magento_Customer::customer"}}'
+        expected_types:
+          .message:
+          - string
+    # CUSTOMER-12 second customer isolation
+    - request:
+        method: GET
+        path: /customers/me
+        defaults:
+          headers:
+            Authorization: Bearer ${other_token}
+      response:
+        expected_status: 200
+        expected_body: '{"id":$other_customer_id,"email":$other_customer_email,"firstname":"APIHydra"}'
+        expected_types:
+          .id:
+          - int
+    # CUSTOMER-13 token revocation behavior for the second customer
+    - request:
+        method: POST
+        path: /integration/customer/revoke-customer-token
+        defaults:
+          headers:
+            Authorization: Bearer ${other_token}
+      response:
+        expected_status: 200
+        expected_body: 'true'
+        expected_types:
+          .: [boolean]
+    # CUSTOMER-14 revoked token is rejected
+    - request:
+        method: GET
+        path: /customers/me
+        defaults:
+          headers:
+            Authorization: Bearer ${other_token}
+      response:
+        expected_status: 401
+        expected_types:
+          .message: [string]
+    # CUSTOMER-15 customer deletion behavior (the checkout customer stays)
+    - request:
+        method: DELETE
+        path: /customers/${other_customer_id}
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+      response:
+        expected_status: 200
+        expected_body: 'true'
+        expected_types:
+          .: [boolean]
+    # CUSTOMER-16 deleted customer is unavailable
+    - request:
+        method: GET
+        path: /customers/${other_customer_id}
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+      response:
+        expected_status: 404
+        expected_body: '{"message":"No such entity with %fieldName = %fieldValue","parameters":{"fieldName":"customerId","fieldValue":"${other_customer_id}"}}'
+        expected_types:
+          .message: [string]

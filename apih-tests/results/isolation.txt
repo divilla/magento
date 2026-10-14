@@ -1,0 +1,28 @@
+Run 1 retained integration state:
+entity	count
+products	2047
+customers	2
+orders	3
+retained_test_products
+1
+retained_test_customers
+1
+entity_id	state	status	sku	qty_ordered	qty_canceled
+3	canceled	canceled	apih-1791879976138541	2.0000	2.0000
+
+Run 2 retained integration state:
+entity	count
+products	2047
+customers	2
+orders	3
+retained_test_products
+1
+retained_test_customers
+1
+previous_run_products
+0
+entity_id	state	status	sku	qty_ordered	qty_canceled
+3	canceled	canceled	apih-1791880068876641	2.0000	2.0000
+
+Original demo before/after dump comparison: identical
+SHA-256: c7b5cf9b3e3663d769728079ef9277f21a56555d570878284d8c809162e7d5fb

@@ -1,0 +1,87 @@
+app: apihydra
+kind: steps
+metadata:
+  name: checkout
+spec:
+  steps:
+    # CHECKOUT-01 estimate shipping
+    - request:
+        method: POST
+        path: /carts/mine/estimate-shipping-methods
+        defaults:
+          headers:
+            Authorization: Bearer ${customer_token}
+        body: '{"address":{"firstname":"APIHydra","lastname":"Fixture","street":["123 Test Street"],"city":"Los Angeles","region":"California","region_id":12,"country_id":"US","postcode":"90001","telephone":"5551234567","email":"apih-${run_suffix}@example.com"}}'
+      response:
+        expected_status: 200
+        expected_types:
+          .:
+          - array
+          ? if any(.[]; .carrier_code == "flatrate" and .method_code == "flatrate" and .available == true and .amount
+            == 10) then true else null end
+          : - boolean
+        capture:
+          estimated_shipping: .[] | select(.carrier_code == "flatrate" and .method_code == "flatrate") | .amount
+    # CHECKOUT-02 shipping information
+    - request:
+        method: POST
+        path: /carts/mine/shipping-information
+        defaults:
+          headers:
+            Authorization: Bearer ${customer_token}
+        body: '{"addressInformation":{"shipping_address":{"firstname":"APIHydra","lastname":"Fixture","street":["123
+          Test Street"],"city":"Los Angeles","region":"California","region_id":12,"country_id":"US","postcode":"90001","telephone":"5551234567","email":"apih-${run_suffix}@example.com"},"billing_address":{"firstname":"APIHydra","lastname":"Fixture","street":["123
+          Test Street"],"city":"Los Angeles","region":"California","region_id":12,"country_id":"US","postcode":"90001","telephone":"5551234567","email":"apih-${run_suffix}@example.com"},"shipping_carrier_code":"flatrate","shipping_method_code":"flatrate"}}'
+      response:
+        expected_status: 200
+        expected_body: '{"totals":{"subtotal":25,"items_qty":2,"shipping_amount":10,"grand_total":35}}'
+        expected_types:
+          .payment_methods:
+          - array
+          .totals.grand_total:
+          - number
+          if any(.payment_methods[]?; .code == "checkmo") then true else null end:
+          - boolean
+        capture:
+          checkout_total: .totals.grand_total
+          shipping_total: .totals.shipping_amount
+    # CHECKOUT-03 payment methods
+    - request:
+        method: GET
+        path: /carts/mine/payment-methods
+        defaults:
+          headers:
+            Authorization: Bearer ${customer_token}
+      response:
+        expected_status: 200
+        expected_types:
+          .:
+          - array
+          if any(.[]; .code == "checkmo") then true else null end:
+          - boolean
+    # CHECKOUT-04 totals
+    - request:
+        method: GET
+        path: /carts/mine/totals
+        defaults:
+          headers:
+            Authorization: Bearer ${customer_token}
+      response:
+        expected_status: 200
+        expected_body: '{"subtotal":25,"items_qty":2,"grand_total":$checkout_total,"shipping_amount":$estimated_shipping,"items":[{"item_id":$checkout_item_id,"qty":2}]}'
+        expected_types:
+          .grand_total:
+          - number
+    # CHECKOUT-05 place order
+    - request:
+        method: POST
+        path: /carts/mine/payment-information
+        defaults:
+          headers:
+            Authorization: Bearer ${customer_token}
+        body: '{"paymentMethod":{"method":"checkmo"},"billingAddress":{"firstname":"APIHydra","lastname":"Fixture","street":["123
+          Test Street"],"city":"Los Angeles","region":"California","region_id":12,"country_id":"US","postcode":"90001","telephone":"5551234567","email":"apih-${run_suffix}@example.com"}}'
+      response:
+        expected_status: 200
+        capture:
+          order_id: tonumber

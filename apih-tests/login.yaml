@@ -1,0 +1,33 @@
+app: apihydra
+kind: steps
+metadata:
+  name: login
+spec:
+  steps:
+    # AUTH-01 admin login
+    - request:
+        method: POST
+        path: /integration/admin/token
+        body: '{"username":"admin","password":"Local88f04ee953262ecb15364be7b92bc3d7!"}'
+      response:
+        expected_status: 200
+        expected_types:
+          .:
+          - string
+          if length > 20 then true else null end:
+          - boolean
+        capture:
+          admin_token: .
+          run_suffix: now * 1000000 | floor | tostring
+    # AUTH-02 invalid login
+    - request:
+        method: POST
+        path: /integration/admin/token
+        body: '{"username":"apih-nonexistent-${run_suffix}","password":"InvalidApiHydraPassword!"}'
+      response:
+        expected_status: 401
+        expected_body: '{"message":"The account sign-in was incorrect or your account is disabled temporarily. Please
+          wait and try again later."}'
+        expected_types:
+          .message:
+          - string

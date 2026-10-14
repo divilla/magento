@@ -1,0 +1,54 @@
+demo.sql: OK
+ Container magento2-integration-integration-db-1 Running 
+ Container magento2-integration-integration-search-1 Running 
+ Container magento2-integration-integration-db-1 Waiting 
+ Container magento2-integration-integration-search-1 Waiting 
+ Container magento2-integration-integration-db-1 Healthy 
+ Container magento2-integration-integration-search-1 Healthy 
+Restoring demo.sql into the dedicated integration database...
+ Container magento2-integration-integration-php-run-3cd56e4047ed Creating 
+ Container magento2-integration-integration-php-run-3cd56e4047ed Created 
+Design Config Grid index has been rebuilt successfully in 00:00:00
+Customer Grid index has been rebuilt successfully in 00:00:00
+Category Products index has been rebuilt successfully in 00:00:00
+Product Categories index has been rebuilt successfully in 00:00:00
+Catalog Rule Product index has been rebuilt successfully in 00:00:00
+Product EAV index has been rebuilt successfully in 00:00:00
+Stock index has been rebuilt successfully in 00:00:00
+Product Price index has been rebuilt successfully in 00:00:00
+Catalog Product Rule index has been rebuilt successfully in 00:00:00
+Catalog Search index has been rebuilt successfully in 00:00:01
+ Container magento2-integration-integration-db-1 Running 
+ Container magento2-integration-integration-search-1 Running 
+ Container magento2-integration-integration-php-1 Creating 
+ Container magento2-integration-integration-php-1 Created 
+ Container magento2-integration-integration-web-1 Creating 
+ Container magento2-integration-integration-web-1 Created 
+ Container magento2-integration-integration-search-1 Waiting 
+ Container magento2-integration-integration-db-1 Waiting 
+ Container magento2-integration-integration-search-1 Healthy 
+ Container magento2-integration-integration-db-1 Healthy 
+ Container magento2-integration-integration-php-1 Starting 
+ Container magento2-integration-integration-php-1 Started 
+ Container magento2-integration-integration-web-1 Starting 
+ Container magento2-integration-integration-web-1 Started 
+entity	count
+products	2046
+customers	1
+orders	2
+Running APIHydra against http://localhost:8081 (default parallelism 1)...
+Working Directory: /home/vito/dev/magento2/apih-tests
+
+[✓] /login
+[✓] /catalog/products
+[✓] /customers/customers
+[✓] /store/store
+[✓] /customers/cart/cart
+[✗] /customers/cart/checkout/checkout
+[✗] /rest/default/V1/carts/mine/payment-information POST line:86
+    expected_types:
+        .: [int]
+
+[✓] /customers/cart/checkout/orders/orders
+
+Exit code: 101

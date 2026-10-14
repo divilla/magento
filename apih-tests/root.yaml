@@ -1,0 +1,12 @@
+app: apihydra
+kind: root
+metadata:
+  name: magento-core-rest
+spec:
+  base_url: http://localhost:8081
+  base_path: /rest/default/V1
+  headers:
+    Content-Type: application/json
+    Accept: application/json
+  disable_cookies: true
+  timeout: 30

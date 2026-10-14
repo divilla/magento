@@ -1,0 +1,133 @@
+app: apihydra
+kind: steps
+metadata:
+  name: cart
+spec:
+  steps:
+    # CART-01 create current cart
+    - request:
+        method: POST
+        path: /carts/mine
+        defaults:
+          headers:
+            Authorization: Bearer ${customer_token}
+      response:
+        expected_status: 200
+        expected_types:
+          .:
+          - int
+          if . > 0 then true else null end:
+          - boolean
+        capture:
+          cart_id: .
+    # CART-02 empty current cart
+    - request:
+        method: GET
+        path: /carts/mine
+        defaults:
+          headers:
+            Authorization: Bearer ${customer_token}
+      response:
+        expected_status: 200
+        expected_body: '{"id":$cart_id,"items":[],"items_count":0,"is_active":true}'
+        expected_types:
+          .customer.id:
+          - int
+    # CART-03 add item
+    - request:
+        method: POST
+        path: /carts/mine/items
+        defaults:
+          headers:
+            Authorization: Bearer ${customer_token}
+        body: '{"cartItem":{"quote_id":$cart_id,"sku":$product_sku,"qty":1}}'
+      response:
+        expected_status: 200
+        expected_body: '{"sku":$product_sku,"qty":1}'
+        expected_types:
+          .item_id:
+          - int
+        capture:
+          cart_item_id: .item_id
+    # CART-04 list items
+    - request:
+        method: GET
+        path: /carts/mine/items
+        defaults:
+          headers:
+            Authorization: Bearer ${customer_token}
+      response:
+        expected_status: 200
+        expected_body: '[{"item_id":$cart_item_id,"sku":$product_sku,"qty":1}]'
+        expected_types:
+          .[0].price:
+          - number
+    # CART-05 change quantity
+    - request:
+        method: PUT
+        path: /carts/mine/items/${cart_item_id}
+        defaults:
+          headers:
+            Authorization: Bearer ${customer_token}
+        body: '{"cartItem":{"quote_id":$cart_id,"sku":$product_sku,"qty":3}}'
+      response:
+        expected_status: 200
+        expected_body: '{"item_id":$cart_item_id,"sku":$product_sku,"qty":3}'
+        expected_types:
+          .qty:
+          - number
+    # CART-06 verify quantity
+    - request:
+        method: GET
+        path: /carts/mine/items
+        defaults:
+          headers:
+            Authorization: Bearer ${customer_token}
+      response:
+        expected_status: 200
+        expected_body: '[{"item_id":$cart_item_id,"sku":$product_sku,"qty":3}]'
+        expected_types:
+          .[0].qty:
+          - number
+    # CART-07 delete item
+    - request:
+        method: DELETE
+        path: /carts/mine/items/${cart_item_id}
+        defaults:
+          headers:
+            Authorization: Bearer ${customer_token}
+      response:
+        expected_status: 200
+        expected_body: 'true'
+        expected_types:
+          .:
+          - boolean
+    # CART-08 verify empty
+    - request:
+        method: GET
+        path: /carts/mine/items
+        defaults:
+          headers:
+            Authorization: Bearer ${customer_token}
+      response:
+        expected_status: 200
+        expected_body: '[]'
+        expected_types:
+          .:
+          - array
+    # CART-09 readd checkout quantity
+    - request:
+        method: POST
+        path: /carts/mine/items
+        defaults:
+          headers:
+            Authorization: Bearer ${customer_token}
+        body: '{"cartItem":{"quote_id":$cart_id,"sku":$product_sku,"qty":2}}'
+      response:
+        expected_status: 200
+        expected_body: '{"sku":$product_sku,"qty":2}'
+        expected_types:
+          .item_id:
+          - int
+        capture:
+          checkout_item_id: .item_id

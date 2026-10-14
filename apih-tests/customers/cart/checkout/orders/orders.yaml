@@ -1,0 +1,85 @@
+app: apihydra
+kind: steps
+metadata:
+  name: orders
+spec:
+  steps:
+    # ORDER-01 retrieve placed order
+    - request:
+        method: GET
+        path: /orders/$order_id
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+      response:
+        expected_status: 200
+        expected_body: '{"entity_id":$order_id,"customer_id":$customer_id,"status":"pending","state":"new","grand_total":$checkout_total,"shipping_amount":$shipping_total,"extension_attributes":{"shipping_assignments":[{"shipping":{"method":"flatrate_flatrate"}}]},"payment":{"method":"checkmo"},"items":[{"sku":$product_sku,"qty_ordered":2,"price":12.5}]}'
+        expected_types:
+          .increment_id:
+          - string
+    # ORDER-02 filtered pagination
+    - request:
+        method: GET
+        path: /orders
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+        query: searchCriteria[filter_groups][0][filters][0][field]=entity_id&searchCriteria[filter_groups][0][filters][0][value]=$order_id&searchCriteria[pageSize]=1&searchCriteria[currentPage]=1
+      response:
+        expected_status: 200
+        expected_body: '{"total_count":1,"items":[{"entity_id":$order_id,"customer_id":$customer_id}],"search_criteria":{"page_size":1,"current_page":1}}'
+        expected_types:
+          .items:
+          - array
+    # ORDER-03 pending status
+    - request:
+        method: GET
+        path: /orders/$order_id/statuses
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+      response:
+        expected_status: 200
+        expected_body: '"pending"'
+        expected_types:
+          .:
+          - string
+    # ORDER-04 cancel order
+    - request:
+        method: POST
+        path: /orders/$order_id/cancel
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+      response:
+        expected_status: 200
+        expected_body: 'true'
+        expected_types:
+          .:
+          - boolean
+    # ORDER-05 cancelled status
+    - request:
+        method: GET
+        path: /orders/$order_id/statuses
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+      response:
+        expected_status: 200
+        expected_body: '"canceled"'
+        expected_types:
+          .:
+          - string
+    # ORDER-06 verify cancellation
+    - request:
+        method: GET
+        path: /orders/$order_id
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+      response:
+        expected_status: 200
+        expected_body: '{"entity_id":$order_id,"state":"canceled","status":"canceled","items":[{"sku":$product_sku,"qty_canceled":2}]}'
+        expected_types:
+          .entity_id:
+          - int

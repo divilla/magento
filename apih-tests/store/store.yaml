@@ -1,0 +1,31 @@
+app: apihydra
+kind: steps
+metadata:
+  name: store
+spec:
+  steps:
+    # STORE-01 configuration
+    - request:
+        method: GET
+        path: /store/storeConfigs
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+      response:
+        expected_status: 200
+        expected_body: '[{"id":1,"code":"default","website_id":1,"base_url":"http://localhost:8081/"}]'
+        expected_types:
+          .[0].base_currency_code:
+          - string
+          .[0].locale:
+          - string
+    # STORE-02 missing authentication
+    - request:
+        method: GET
+        path: /store/storeConfigs
+      response:
+        expected_status: 401
+        expected_body: '{"parameters":{"resources":"Magento_Backend::store"}}'
+        expected_types:
+          .message:
+          - string

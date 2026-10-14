@@ -1,0 +1,165 @@
+app: apihydra
+kind: steps
+metadata:
+  name: products
+spec:
+  steps:
+    # CAT-01 attribute sets
+    - request:
+        method: GET
+        path: /products/attribute-sets/sets/list
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+        query: searchCriteria[filter_groups][0][filters][0][field]=attribute_set_name&searchCriteria[filter_groups][0][filters][0][value]=Default&searchCriteria[pageSize]=1
+      response:
+        expected_status: 200
+        expected_body: '{"total_count":1,"items":[{"attribute_set_name":"Default"}]}'
+        expected_types:
+          .items[0].attribute_set_id:
+          - int
+        capture:
+          attribute_set_id: .items[0].attribute_set_id
+    # CAT-02 create stocked product
+    - request:
+        method: POST
+        path: /products
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+        body: '{"product":{"sku":"apih-${run_suffix}","name":"APIHydra simple fixture","attribute_set_id":$attribute_set_id,"price":10,"status":1,"visibility":4,"type_id":"simple","weight":1,"custom_attributes":[{"attribute_code":"url_key","value":"apih-${run_suffix}"},{"attribute_code":"tax_class_id","value":"0"}],"extension_attributes":{"website_ids":[1],"stock_item":{"qty":100,"is_in_stock":true,"manage_stock":true,"use_config_manage_stock":false}}}}'
+      response:
+        expected_status: 200
+        expected_body: '{"sku":"apih-${run_suffix}","price":10,"type_id":"simple","status":1}'
+        expected_types:
+          .id:
+          - int
+          .extension_attributes.stock_item.qty:
+          - number
+        capture:
+          product_id: .id
+          product_sku: .sku
+    # CAT-03 get product
+    - request:
+        method: GET
+        path: /products/${product_sku}
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+      response:
+        expected_status: 200
+        expected_body: '{"id":$product_id,"sku":$product_sku,"price":10,"extension_attributes":{"stock_item":{"qty":100,"is_in_stock":true}}}'
+        expected_types:
+          .name:
+          - string
+    # CAT-04 update price
+    - request:
+        method: PUT
+        path: /products/${product_sku}
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+        body: '{"product":{"sku":$product_sku,"price":12.5}}'
+      response:
+        expected_status: 200
+        expected_body: '{"id":$product_id,"sku":$product_sku,"price":12.5}'
+        expected_types:
+          .price:
+          - number
+    # CAT-05 filtered pagination
+    - request:
+        method: GET
+        path: /products
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+        query: searchCriteria[filter_groups][0][filters][0][field]=sku&searchCriteria[filter_groups][0][filters][0][value]=${product_sku}&searchCriteria[pageSize]=1&searchCriteria[currentPage]=1
+      response:
+        expected_status: 200
+        expected_body: '{"total_count":1,"items":[{"id":$product_id,"sku":$product_sku,"price":12.5}],"search_criteria":{"page_size":1,"current_page":1}}'
+        expected_types:
+          .items:
+          - array
+    # CAT-06 missing product
+    - request:
+        method: GET
+        path: /products/apih-missing-${run_suffix}
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+      response:
+        expected_status: 404
+        expected_body: '{"message":"The product with SKU \"%1\" does not exist.","parameters":["apih-missing-${run_suffix}"]}'
+        expected_types:
+          .message:
+          - string
+    # CAT-07 invalid product payload
+    - request:
+        method: POST
+        path: /products
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+        body: '{"product":{"sku":"apih-invalid-${run_suffix}","type_id":"simple"}}'
+      response:
+        expected_status: 400
+        expected_body: '{"message":"Invalid product data: %1","parameters":["Invalid attribute set entity type"]}'
+        expected_types:
+          .message:
+          - string
+    # CAT-08 pagination beyond last page
+    - request:
+        method: GET
+        path: /products
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+        query: searchCriteria[filter_groups][0][filters][0][field]=sku&searchCriteria[filter_groups][0][filters][0][value]=${product_sku}&searchCriteria[pageSize]=1&searchCriteria[currentPage]=2
+      response:
+        expected_status: 200
+        expected_body: '{"total_count":1,"items":[],"search_criteria":{"page_size":1,"current_page":2}}'
+        expected_types:
+          .items:
+          - array
+    # CAT-09 create a separate fixture to test product deletion
+    - request:
+        method: POST
+        path: /products
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+        body: >-
+          {"product":{"sku":"apih-delete-${run_suffix}","name":"APIHydra deletion fixture",
+          "attribute_set_id":$attribute_set_id,"price":1,"status":1,"visibility":1,"type_id":"simple"}}
+      response:
+        expected_status: 200
+        expected_body: '{"sku":"apih-delete-${run_suffix}","type_id":"simple","price":1}'
+        expected_types:
+          .id: [int]
+          .sku: [string]
+        capture:
+          deletion_product_sku: .sku
+    # CAT-10 delete the disposable product (the checkout product stays)
+    - request:
+        method: DELETE
+        path: /products/${deletion_product_sku}
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+      response:
+        expected_status: 200
+        expected_body: 'true'
+        expected_types:
+          .: [boolean]
+    # CAT-11 deleted product is unavailable
+    - request:
+        method: GET
+        path: /products/${deletion_product_sku}
+        defaults:
+          headers:
+            Authorization: Bearer ${admin_token}
+      response:
+        expected_status: 404
+        expected_body: '{"message":"The product with SKU \"%1\" does not exist.","parameters":[$deletion_product_sku]}'
+        expected_types:
+          .message: [string]

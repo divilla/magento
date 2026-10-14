@@ -1,4 +1,6 @@
 /.buildpath
+/.env
+/apih-tests/demo.sql
 /.cache
 /.metadata
 /.project
@@ -18,6 +20,7 @@ atlassian*
 /app/etc/config.php
 /app/etc/env.php
 /app/code/Magento/TestModule*
+/app/code/Magento/?*SampleData
 /lib/internal/flex/uploader/.actionScriptProperties
 /lib/internal/flex/uploader/.flexProperties
 /lib/internal/flex/uploader/.project
