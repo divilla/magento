@@ -1,0 +1,7 @@
+services:
+  integration-php:
+    image: magento2-integration-php-coverage
+    build:
+      context: ./code-coverage
+    environment:
+      XDEBUG_MODE: coverage

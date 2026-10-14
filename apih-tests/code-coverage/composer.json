@@ -1,0 +1,8 @@
+{
+    "require": {
+        "phpunit/php-code-coverage": "11.0.12"
+    },
+    "config": {
+        "allow-plugins": false
+    }
+}
